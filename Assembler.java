@@ -22,7 +22,7 @@ public class Assembler {
         }
     }
 
-    public static void passtwo(ArrayList<Symbols> Symbol_Table,HashMap<String,String> opcodes) throws IOException{
+    public static void passtwo(ArrayList<Symbols> Symbol_Table,ArrayList<Literals> literal_Table,HashMap<String,String> opcodes) throws IOException{
 
         System.out.println("Pass 2 Started..");
 
@@ -31,49 +31,79 @@ public class Assembler {
             in = new BufferedReader( new FileReader("input.txt"));
 
             String l;
+            boolean data_sec=false;
 
             while ((l = in.readLine()) != null) {
+
+                l=l.replaceAll("\\s+"," ").trim();
+
+                boolean comment=false;
+
+                //checking for text section and data section...
+                if(l.equals("Text Section")){
+                    comment=true;
+                }
+
+                if(l.equals("Data Section")){
+                    data_sec=true;
+                }
+
+                //comment check before each line..
+                for(int it=0;it<l.length();it++){
+                    char z = l.charAt(it);
+
+                    if(z==';'){
+                        comment=true;
+                    }
+                }
+
                 String[] instruction=null;
 
                 instruction=l.split(" ");
 
                 for(int i=0;i<instruction.length;i++){
 
-                    System.out.print("\n");
+                    if(instruction[i].equals("START")){
+                        comment=true;
+                    }
 
-                    for(int st=0;st<Symbol_Table.size();st++){
-                        if(Symbol_Table.get(st).symbol.equals(instruction[i])){
-                            System.out.print(Symbol_Table.get(st).address + " ");
-                            appendStrToFile("machinecode.txt",Integer.toString(Symbol_Table.get(st).address));
+                    if(!comment && !data_sec){
+
+                        System.out.print("\n");
+
+                        for(int st=0;st<Symbol_Table.size();st++){
+                            if(Symbol_Table.get(st).symbol.equals(instruction[i])){
+                                System.out.print(Symbol_Table.get(st).address + " ");
+                                appendStrToFile("machinecode.txt",Integer.toString(Symbol_Table.get(st).address));
+                            }
+
+                            if(Symbol_Table.get(st).symbol.equals(instruction[i] + ":")){
+                                System.out.print(Symbol_Table.get(st).address + " ");
+                                appendStrToFile("machinecode.txt",Integer.toString(Symbol_Table.get(st).address));
+                            }
+
+
+
                         }
 
-                        if(Symbol_Table.get(st).symbol.equals(instruction[i] + ":")){
-                            System.out.print(Symbol_Table.get(st).address + " ");
-                            appendStrToFile("machinecode.txt",Integer.toString(Symbol_Table.get(st).address));
+                        if(opcodes.containsKey(instruction[i])){
+                            String a = opcodes.get(instruction[i]);
+                            System.out.print(a + " ");
+                            appendStrToFile("machinecode.txt",a);
                         }
 
 
+                        try{
+                            int x = -2;
+                            x = Integer.parseInt(instruction[i]);
+                            System.out.print(x);
+                            appendStrToFile("machinecode.txt",instruction[i]);
+                        }
+                        catch(NumberFormatException e){
+
+                        }
 
                     }
-
-                    if(opcodes.containsKey(instruction[i])){
-                        String a = opcodes.get(instruction[i]);
-                        System.out.print(a + " ");
-                        appendStrToFile("machinecode.txt",a);
-                    }
-
-
-                    try{
-                        int x = -2;
-                        x = Integer.parseInt(instruction[i]);
-                        System.out.print(x);
-                        appendStrToFile("machinecode.txt",instruction[i]);
-                    }
-                    catch(NumberFormatException e){
-
-                    }
-
-
                 }
 
                 System.out.println(Arrays.toString(instruction));
@@ -93,14 +123,14 @@ public class Assembler {
 
     }
 
-    public static void passone(ArrayList<Symbols> Symbol_Table,HashMap<String,String> opcodes) throws IOException {
+    public static void passone(ArrayList<Symbols> Symbol_Table,ArrayList<Literals> literal_Table,HashMap<String,String> opcodes) throws IOException {
 
 
         int location_counter;
         final int end_statement=-2;
         int length=1;
 
-        location_counter=0;
+        location_counter=-1;
         boolean loc_counter_flag=true;
 
         //File Reading..
@@ -113,8 +143,26 @@ public class Assembler {
 
             String l;
 
-
             while ((l = in.readLine()) != null){ //IOException
+
+                l=l.replaceAll("\\s+"," ").trim();
+
+                boolean comment=false;
+
+                //checking for text section and data section...
+                if(l.equals("Text Section") || l.equals("Data Section")){
+                    comment=true;
+                }
+
+                //comment check before each line..
+                for(int it=0;it<l.length();it++){
+                    char z = l.charAt(it);
+
+                    if(z==';'){
+                        comment=true;
+                    }
+
+                }
 
                 String[] instruction=null;
 
@@ -122,41 +170,71 @@ public class Assembler {
 
                 for(int i=0;i<instruction.length;i++){
 
-                    //CLA checks
-                    try{
-                        if(instruction[i].equals("CLA") && instruction[i+1]!=null && loc_counter_flag){
 
-                            location_counter= Integer.parseInt(instruction[i+1]);
-                            loc_counter_flag=false;
-                        }
-                    }
-                    catch(IndexOutOfBoundsException e){
-                        if(loc_counter_flag){
-                            location_counter=0;
-                            loc_counter_flag=false;
-                        }
+                    if(!comment){
 
-                    }
-
-                    //Iteration over characters of the words..
-                    for(int j=0;j<instruction[i].length();j++){
-
-                        //Label founder..
-                        char c = instruction[i].charAt(j);
-                        if(c==':'){
-                            Symbol_Table.add(new Symbols(instruction[i],location_counter));
-                            appendStrToFile("Symbol_Table.txt",instruction[i]);
+                        //storing declared variable in symbol table..(DW Statement)
+                        if(instruction[i].equals("DW")){
+                            Symbol_Table.add(new Symbols(instruction[i-1],location_counter));
+                            appendStrToFile("Symbol_Table.txt",instruction[i-1]);
                             appendStrToFile("Symbol_Table.txt",Integer.toString(location_counter));
                             appendStrToFile("Symbol_Table.txt","\n");
                         }
 
-                    }
+                        try{
+                            if(instruction[i].equals("START") && instruction[i+1]!=null && loc_counter_flag){
 
+                                location_counter+= Integer.parseInt(instruction[i+1]);
+                                loc_counter_flag=false;
+                            }
+                        }
+                        catch(IndexOutOfBoundsException e){
+                            if(loc_counter_flag){
+                                location_counter=-1;
+                                loc_counter_flag=false;
+                            }
+
+                        }
+
+                        //CLA checks
+//                    try{
+//                        if(instruction[i].equals("CLA") && instruction[i+1]!=null && loc_counter_flag){
+//
+//                            location_counter= Integer.parseInt(instruction[i+1]);
+//                            loc_counter_flag=false;
+//                        }
+//                    }
+//                    catch(IndexOutOfBoundsException e){
+//                        if(loc_counter_flag){
+//                            location_counter=0;
+//                            loc_counter_flag=false;
+//                        }
+//
+//                    }
+
+                        //Iteration over characters of the words..
+                        for(int j=0;j<instruction[i].length();j++){
+
+                            //Label founder..
+                            char c = instruction[i].charAt(j);
+                            if(c==':'){
+                                Symbol_Table.add(new Symbols(instruction[i],location_counter));
+                                appendStrToFile("Symbol_Table.txt",instruction[i]);
+                                appendStrToFile("Symbol_Table.txt",Integer.toString(location_counter));
+                                appendStrToFile("Symbol_Table.txt","\n");
+                            }
+
+                        }
+                    }
 
                 }
 
 //                System.out.println(Arrays.toString(instruction));
-                location_counter+=length;
+
+
+                if(!comment){
+                    location_counter+=length;
+                }
 
             }
         }finally {
@@ -194,12 +272,8 @@ public class Assembler {
         opcodes.put("DIV","1011");
         opcodes.put("STP","1100");
 
-
-        passone(Symbol_Table,opcodes );
-        passtwo(Symbol_Table,opcodes );
-
-
-
+        passone(Symbol_Table,literal_Table,opcodes );
+        passtwo(Symbol_Table,literal_Table,opcodes );
 
     }
 
