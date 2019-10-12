@@ -6,6 +6,15 @@ import java.util.HashMap;
 
 public class Assembler {
 
+    //This method converts the decimal number into 8-bit binary..
+    public static String intToBinary(int a) {
+        String temp = Integer.toBinaryString(a);
+        while(temp.length() !=8){
+            temp = "0"+temp;
+        }
+        return temp;
+    }
+
     public static void appendStrToFile(String fileName,
                                        String str)
     {
@@ -14,7 +23,7 @@ public class Assembler {
             // Open given file in append mode.
             BufferedWriter out = new BufferedWriter(
                     new FileWriter(fileName, true));
-            out.write(str + " ");
+            out.write(str);
             out.close();
         }
         catch (IOException e) {
@@ -33,9 +42,11 @@ public class Assembler {
             String l;
             boolean data_sec=false;
 
+
             while ((l = in.readLine()) != null) {
 
                 l=l.replaceAll("\\s+"," ").trim();
+                boolean extra=false;
 
                 boolean comment=false;
 
@@ -67,6 +78,14 @@ public class Assembler {
                         comment=true;
                     }
 
+                    if(i==0){
+                        for(int k=0;k<Symbol_Table.size();k++){
+                            if(instruction[i].equals(Symbol_Table.get(k).symbol)){
+                                extra=true;
+                            }
+                        }
+                    }
+
                     if(!comment && !data_sec){
 
                         System.out.print("\n");
@@ -74,12 +93,18 @@ public class Assembler {
                         for(int st=0;st<Symbol_Table.size();st++){
                             if(Symbol_Table.get(st).symbol.equals(instruction[i])){
                                 System.out.print(Symbol_Table.get(st).address + " ");
-                                appendStrToFile("machinecode.txt",Integer.toString(Symbol_Table.get(st).address));
+
+                                if(!extra){
+                                    appendStrToFile("machinecode.txt",intToBinary(Symbol_Table.get(st).address));
+                                }
+
                             }
 
                             if(Symbol_Table.get(st).symbol.equals(instruction[i] + ":")){
                                 System.out.print(Symbol_Table.get(st).address + " ");
-                                appendStrToFile("machinecode.txt",Integer.toString(Symbol_Table.get(st).address));
+                                if(!extra){
+                                    appendStrToFile("machinecode.txt",intToBinary(Symbol_Table.get(st).address));
+                                }
                             }
 
 
@@ -97,7 +122,7 @@ public class Assembler {
                             int x = -2;
                             x = Integer.parseInt(instruction[i]);
                             System.out.print(x);
-                            appendStrToFile("machinecode.txt",instruction[i]);
+                            appendStrToFile("machinecode.txt",intToBinary(Integer.parseInt(instruction[i])));
                         }
                         catch(NumberFormatException e){
 
@@ -127,7 +152,6 @@ public class Assembler {
 
 
         int location_counter;
-        final int end_statement=-2;
         int length=1;
 
         location_counter=-1;
